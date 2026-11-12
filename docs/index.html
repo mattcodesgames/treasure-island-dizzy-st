@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Treasure Island Dizzy (Atari ST)</title>
+<style>
+  :root { --bg:#111; --fg:#eee; --muted:#999; --accent:#f5c518; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--fg);
+    font: 15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  main { min-height:100%; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:14px; padding:16px; }
+  h1 { margin:0; font-size:20px; font-weight:600; }
+  #screen { position:relative; width:min(100%, 960px); aspect-ratio: 4 / 3;
+    background:#000; border-radius:6px; overflow:hidden; }
+  canvas { position:absolute; inset:0; width:100%; height:100%;
+    image-rendering: pixelated; outline:none; }
+  #start { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:10px; background:#000; border:0; color:var(--fg);
+    font:inherit; cursor:pointer; }
+  #start b { font-size:22px; color:var(--accent); }
+  #status { color:var(--muted); min-height:1.4em; }
+  .bar { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  button.ctl { background:#222; color:var(--fg); border:1px solid #444; border-radius:4px;
+    padding:6px 12px; font:inherit; cursor:pointer; }
+  button.ctl:hover { border-color:var(--accent); }
+  .help { color:var(--muted); font-size:13px; max-width:960px; text-align:center; }
+  kbd { background:#222; border:1px solid #444; border-radius:3px; padding:0 4px; font-size:12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Treasure Island Dizzy (Atari ST)</h1>
+  <div id="screen">
+    <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+    <button id="start" type="button"><b>Click to start</b><span>Atari ST emulator running in WebAssembly</span></button>
+  </div>
+  <div id="status"></div>
+  <div class="bar">
+    <button class="ctl" id="fs" type="button">Fullscreen</button>
+    <button class="ctl" id="reset" type="button">Reset</button>
+  </div>
+  <p class="help">
+    <kbd>Space</kbd> starts the game and jumps (joystick fire). Arrow keys move.
+    Click the screen to give it keyboard focus. <kbd>F12</kbd> opens the Hatari menu.
+    Runs the original disk image in <a href="https://hatari.tuxfamily.org/" style="color:var(--accent)">Hatari</a>
+    with the free <a href="https://emutos.sourceforge.io/" style="color:var(--accent)">EmuTOS</a> ROM.
+  </p>
+</main>
+<script>
+  const canvas = document.getElementById('canvas');
+  const statusEl = document.getElementById('status');
+  const startBtn = document.getElementById('start');
+  // SDL renames the tab to "Hatari vX"; keep our title.
+  const pageTitle = document.title;
+  Object.defineProperty(document, 'title', { get: () => pageTitle, set: () => {}, configurable: true });
+
+  var Module = {
+    canvas: canvas,
+    print: (t) => console.log(t),
+    printErr: (t) => console.warn(t),
+    setStatus: (t) => { statusEl.textContent = t || ''; },
+    monitorRunDependencies: function (left) {
+      this.total = Math.max(this.total || 0, left);
+      Module.setStatus(left ? `Loading… (${this.total - left}/${this.total})` : '');
+    },
+    onRuntimeInitialized: () => { canvas.focus(); }
+  };
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); });
+  canvas.addEventListener('mousedown', () => canvas.focus());
+
+  startBtn.addEventListener('click', () => {
+    startBtn.remove();
+    Module.setStatus('Downloading…');
+    const s = document.createElement('script');
+    s.src = 'hatari.js';
+    s.async = true;
+    document.body.appendChild(s);
+  });
+
+  document.getElementById('fs').addEventListener('click', () => {
+    if (Module.requestFullscreen) Module.requestFullscreen(false, false);
+    else document.getElementById('screen').requestFullscreen();
+  });
+  document.getElementById('reset').addEventListener('click', () => {
+    if (Module._Reset_Cold) Module._Reset_Cold();
+    canvas.focus();
+  });
+</script>
+</body>
+</html>
